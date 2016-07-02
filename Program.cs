@@ -35,7 +35,7 @@ namespace VerifySQL
 
             //'1/24/2016 2:58:00 AM','1/25/2016 5:56:00 PM'
 
-            td = GetTimeDifference(new DateTime(2016, 01, 27, 13, 57, 0), new DateTime(2016, 01, 30, 17, 48, 0));
+            td = GetTimeDifference(new DateTime(2016, 01, 24, 2, 58, 0), new DateTime(2016, 01, 25, 17, 56, 0));
             Console.WriteLine(td.ToString());
 
 
@@ -50,25 +50,38 @@ namespace VerifySQL
                 connection.Open();
                 connection.Execute("CREATE TABLE #EmployeePunches (     PunchID     INT IDENTITY(1, 1)     ,  ClockIn    DATETIME     , ClockOut   DATETIME, EmpID int default 100 ) ");
                 var start = new DateTime(2016, 01, 22, 12, 0, 0);
-                for(int i = 0; i < 1000;i++)
+                var maxTime = DateTime.Parse("2054-10-04 00:00:00.000");
+                while (true)
                 {
                     start = GetRandomDateTimes(start);
                     var end = GetRandomDateTimes(start);
-                    Debug.Assert(end > start);
+                    //If we go over the max we can handle then exit
+                    if(start > maxTime || end > maxTime)
+                    {
+                        break;
+                    }
                     connection.Execute("INSERT INTO #EmployeePunches (ClockIn,ClockOut) VALUES (@clockin, @clockout)", new { clockin = start, clockout = end });
                     start = end;
                 }
                 slips = connection.Query<TimeSlip>(HIDEOUS_SQL);
                 connection.Close();
             }
-            Parallel.ForEach(slips, slip =>
+            foreach (var slip in slips)
             {
                 var result = GetTimeDifference(slip.ClockIn, slip.ClockOut);
-                Debug.Assert(result.Hours == slip.ValidHours);
-                Debug.Assert(result.Minutes == slip.ValidMinutes);
+                if(result.Hours != slip.ValidHours)
+                {
+                    Console.WriteLine("Error!");
+                    Console.ReadLine();
+                }
+                if(result.Minutes != slip.ValidMinutes)
+                {
+                    Console.WriteLine("Error!");
+                    Console.ReadLine();
+                }
 
-            });
-
+            }
+            Console.WriteLine("All Tests Pass");
             Console.ReadLine();
 
         }
@@ -85,167 +98,63 @@ namespace VerifySQL
 
         static TimeDifference GetTimeDifference(DateTime clockIn, DateTime clockOut)
         {
-            var timeDifference = new TimeDifference();
-            timeDifference.ClockIn = clockIn;
-            timeDifference.ClockOut = clockOut;
-
-            var adjustedClockInDatetime = clockIn;
-            if (clockIn.Hour < 8)
-            {
-                adjustedClockInDatetime = new DateTime(clockIn.Year, clockIn.Month, clockIn.Day, 8, 0, 0);
-            }
-            else if (clockIn.Hour >= 17)
-            {
-                adjustedClockInDatetime = new DateTime(clockIn.Year, clockIn.Month, clockIn.Day, 8, 0, 0).AddDays(1);
-            }
-
-            var adjustedClockOutDatetime = clockOut;
-            if (clockOut.Hour >= 17)
-            {
-                adjustedClockOutDatetime = new DateTime(clockOut.Year, clockOut.Month, clockOut.Day, 17, 0, 0);
-            }
-            else if (clockOut.Hour < 8)
-            {
-                adjustedClockOutDatetime = new DateTime(clockOut.Year, clockOut.Month, clockOut.Day, 17, 0, 0).AddDays(-1);
-            }
-
-            //We can simply calculate the time for this single day
-            if (adjustedClockInDatetime.Date == adjustedClockOutDatetime.Date)
-            {
-                //If the date is the same and its Sunday or Saturday we can leave early.
-                if (adjustedClockInDatetime.Date.DayOfWeek == DayOfWeek.Sunday || adjustedClockInDatetime.DayOfWeek == DayOfWeek.Saturday)
-                {
-                    return timeDifference;
-                }
-
-                var timediff = adjustedClockOutDatetime.Subtract(adjustedClockInDatetime);
-                timeDifference.Hours = timediff.Hours;
-                timeDifference.Minutes = timediff.Minutes;
-                return timeDifference;
-            }
-
-            //Lets try to handle the case where the days are all on the weekend, this is probably not the most
-            //  effecient code but since its a sanity check I want clarity over performance
-            var indexDate = adjustedClockInDatetime.Date;
-            var weekdays = 0;
-            while (indexDate.Date != adjustedClockOutDatetime.Date)
-            {
-                if (indexDate.DayOfWeek != DayOfWeek.Sunday && indexDate.DayOfWeek != DayOfWeek.Saturday)
-                {
-                    weekdays++;
-                    break;
-                }
-                indexDate = indexDate.AddDays(1);
-            }
-            if (weekdays == 0)
-            {
-                return timeDifference;
-            }
-
-            //Now for the complicated test of trying to figure out what we need to do with multi item days.
-
-            //Get the time to the end of the day for the clock in event
-            var endOfDay = new DateTime(adjustedClockInDatetime.Year, adjustedClockInDatetime.Month, adjustedClockInDatetime.Day, 17, 0, 0);
-            TimeSpan differenceClockInDay = new TimeSpan();
-            if (adjustedClockInDatetime.DayOfWeek != DayOfWeek.Sunday && adjustedClockInDatetime.DayOfWeek != DayOfWeek.Saturday)
-            {
-                differenceClockInDay = endOfDay.Subtract(adjustedClockInDatetime);
-            }
-
-            //Get the time for the start of day to the clock out date
-            var startOfDate = new DateTime(adjustedClockOutDatetime.Year, adjustedClockOutDatetime.Month, adjustedClockOutDatetime.Day, 8, 0, 0);
-            TimeSpan differenceClockOutDay = new TimeSpan();
-            if (adjustedClockOutDatetime.DayOfWeek != DayOfWeek.Sunday && adjustedClockOutDatetime.DayOfWeek != DayOfWeek.Saturday)
-            {
-                differenceClockOutDay = adjustedClockOutDatetime.Subtract(startOfDate);
-            }
-
-            var bothDays = differenceClockInDay + differenceClockOutDay;
-
-            //Now we need to find the working days between them
-            //Start on the next day
-            indexDate = adjustedClockInDatetime.Date.AddDays(1);
-            var workinDaysBetween = 0;
-            while (indexDate.Date != adjustedClockOutDatetime.Date)
-            {
-                if (indexDate.DayOfWeek != DayOfWeek.Sunday && indexDate.DayOfWeek != DayOfWeek.Saturday)
-                {
-                    workinDaysBetween++;
-                }
-                indexDate = indexDate.Date.AddDays(1);
-            }
-            var totalHours = (workinDaysBetween * 9) + bothDays.Hours;
-            var totalMinutes = bothDays.Minutes;
-            timeDifference.Hours = totalHours;
-            timeDifference.Minutes = totalMinutes;
+            var timeDifference = new TimeDifference(clockIn,clockOut);
             return timeDifference;
         }
 
         const string HIDEOUS_SQL = @"
-select P1.PunchID,EmpID,
-	ClockIn,
-	ClockOut,
-	AdjClockIn,
-	AdjClockOut,
-	WorkDays,
-	datename(dw,clockin) as ClockInDay,
-	datename(dw,ClockOut) as ClockOutDay,
-	WorkDays - IIF(cast(ClockIn as date) <> cast(AdjClockIn as date), 1,0) - IIF(cast(ClockOut as date) <> cast(AdjClockOut as date), 1,0) as AdjustedWorkDays,
+select *, minutesworked / 60 as validhours, minutesworked % 60 as validminutes from (
+select punchid
+	,sum(datediff(minute,'1900-01-01 00:00:00.000',
+		case
+		--Invalid data detection
+		when ClockOut < ClockIn
+			then dateadd(hour,0,'1900-01-01 00:00:00.000')
+		--Edge case detection, if the times are the same
+		when clockout = ClockIn 
+			then dateadd(hour,0,'1900-01-01 00:00:00.000')
+		--Early check if the clockout is before start of day
+		when clockout < startofday 
+			then dateadd(hour,0,'1900-01-01 00:00:00.000')
+		--Early check if checkin is after the end of the day
+		when clockin > endofday 
+			then dateadd(hour,0,'1900-01-01 00:00:00.000')
+		--If this is a date in between the clock in and clock out just use whatever the referenced work hours available is
+		-- ie 9 for M-F and 0 for Sat-Sun
+		when cast(clockin as date) <> cast(datereference as date) and cast(clockout as date) <> cast(datereference as date) 
+			then  dateadd(hour,workhoursavailable,'1900-01-01 00:00:00.000')  
+		--If its a single day and its work day, then get the boundaries if clockin before 8 AM then set it to 8AM and if clockout is 
+		--   after 5PM then set it to 5 PM
+        when cast(clockin as date) = cast(ClockOut as date) and workhoursavailable > 0
+			then iif(ClockOut > endofday,endofday,clockout) - iif(clockin < startofday,startofday,clockin)
+		--Calculate for the clock in date, again checking for boundaries and that it is a work day
+		when cast(clockin as date) = datereference and workhoursavailable > 0
+			then endofday - iif(clockin < startofday,startofday,clockin) 
+		--Calculate for the clock out date, again checking for boundaries and that it is a work day
+		when cast(ClockOut as date) = datereference and workhoursavailable > 0
+			then iif(ClockOut > endofday,endofday,clockout) - startofday
+		else 0
+		end)) as minutesworked
+	from  #EmployeePunches 
+, 
+(
+select 
+	datereference, 
 	case 
-		when WorkDays < 0 then 
-			0
-	    when (WorkDays - IIF(cast(ClockIn as date) <> cast(AdjClockIn as date), 1,0) - IIF(cast(ClockOut as date) <> cast(AdjClockOut as date), 1,0)) > 0 or cast(AdjClockIn as date) <> cast(AdjClockOut as date) then 
-			--Get the clock in to the 5PM end of day then add those hours to 8 AM to clock out finally calculate the full work days between there as 9 hours each
-			cast(floor((cast(dateadd(hour,17,cast(cast(AdjClockIn as date) as datetime)) - AdjClockIn as numeric(16,8)) * 24.0) + (cast(AdjClockOut - dateadd(hour,8,cast(cast(AdjClockOut as date) as datetime)) as numeric(16,8)) * 24.0)) + ((WorkDays  - IIF(cast(ClockIn as date) <> cast(AdjClockIn as date), 1,0) - IIF(cast(ClockOut as date) <> cast(AdjClockOut as date), 1,0)) * 9.0) as int)
-		else 
-			floor(cast(cast(cast(AdjClockOut as datetime) - cast(AdjClockIn as datetime) as float) * 24.0 as int))
-	    end as 'ValidHours',
-	case when WorkDays < 0
-			then 0
-	    when WorkDays > 0
-			then  cast(ROUND((cast(cast(dateadd(hour,17,cast(cast(AdjClockIn as date) as datetime)) - AdjClockIn as numeric(16,8)) * 24.0 + cast(AdjClockOut - dateadd(hour,8,cast(cast(AdjClockOut as date) as datetime)) as numeric(16,8)) * 24.0 as numeric(16,8)) % 1) * 60,0) as int)
-	else DATEDIFF(minute,AdjClockIn,AdjClockOut) % 60
-	end as 'ValidMinutes'
-	from #EmployeePunches as p1
-	join (
-			--Sanitize the Clock In dates
-			select case 
-					when DATENAME(dw,clockin) = 'Saturday' 
-						--Set the date to Monday at 8 AM
-						then dateadd(hour,8,dateadd(day,2,cast(cast(clockin as date) as datetime)))
-					when DATENAME(dw,clockin) = 'Sunday' 
-						--Set the date to Monday at 8 AM			
-						then dateadd(hour,8,dateadd(day,1,cast(cast(clockin as date) as datetime)))
-					when datepart(minute,clockin) + (datepart(hour,clockin) * 60) < 480 
-						then dateadd(hh,8,cast(cast(clockin as date) as datetime)) 
-					when  datepart(minute,clockin) + (datepart(hour,clockin) * 60) > 1020
-						then dateadd(hh,8,cast(dateadd(day,1,cast(clockin as date)) as datetime)) 
-					else 
-						clockin 
-					end  as AdjClockIn,
-			       case 
-						when DATENAME(dw,clockout) = 'Saturday' 
-						--Set the date to Monday at 8 AM
-						then dateadd(hour,17,dateadd(day,-1,cast(cast(clockout as date) as datetime)))
-					when DATENAME(dw,clockout) = 'Sunday' 
-						--Set the date to Monday at 8 AM			
-						then dateadd(hour,17,dateadd(day,-2,cast(cast(clockout as date) as datetime)))
-					when datepart(minute,clockout) + (datepart(hour,clockout) * 60) > 1020 
-						then dateadd(hh,17,cast(cast(clockout as date) as datetime)) 
-					when datepart(minute,clockout) + (datepart(hour,clockout) * 60) < 480 
-						then dateadd(hh,17,cast(dateadd(day,-1,cast(clockout as date)) as datetime)) 
-					else 
-						clockout end as AdjClockOut,
-				   case 
-					when cast(clockin as date) = cast(clockout as date) 
-						then 0 
-				   else ( 
-							(datepart(dy,clockout) - datepart(dy,clockin) - 1) - 
-							(DATEDIFF(wk,clockin, clockout) * 2) - 
-							(CASE 
-								WHEN DATENAME(dw, clockout) = 'Sunday' THEN 1 ELSE 0 END) - (CASE WHEN DATENAME(dw, clockout) = 'Saturday' THEN 1 ELSE 0 END))  END as WorkDays,
-				   PunchID
-				   from #EmployeePunches) as p2 on p2.PunchID = p1.PunchID
+		when datename(dw,datereference) in ('Saturday','Sunday') 
+			then 0 
+		else 9 
+		end as workhoursavailable
+		,dateadd(hour,8,datereference) as startofday
+		,dateadd(hour,17,datereference) as endofday
+		from
+		
+	(SELECT TOP 20000 dateadd(day,row_number() over(order by t1.number) ,'2000-01-01') as datereference
+		FROM master..spt_values t1 
+		CROSS JOIN master..spt_values t2) as dates) as dateref
+	where cast(ClockIn as date) <= cast(datereference as date) and cast(clockout as date) >= cast(datereference as date) group by PunchID) as calculated
+
+	join #EmployeePunches as base on base.PunchID = calculated.PunchID
     ";
     }
 
@@ -256,6 +165,172 @@ select P1.PunchID,EmpID,
         public int Hours { get; set; }
         public int Minutes { get; set; }
 
+
+        public TimeDifference(DateTime clockIn, DateTime clockOut)
+        {
+            ClockIn = clockIn;
+            ClockOut = clockOut;
+            EvaluateHoursAndMinutes();
+        }
+
+        public DateTime NewAdjustedClockIn
+        {
+            get
+            {
+                //If the clock in is on a Saturday set it to Monday Morning at 8AM
+                if (ClockIn.DayOfWeek == DayOfWeek.Saturday)
+                {
+                    var monday = ClockIn.AddDays(2);
+                    return new DateTime(monday.Year, monday.Month, monday.Day, 8, 0, 0);
+                }
+                else if (ClockIn.DayOfWeek == DayOfWeek.Sunday)
+                {
+                    var monday = ClockIn.AddDays(1);
+                    return new DateTime(monday.Year, monday.Month, monday.Day, 8, 0, 0);
+                }
+                else if (ClockIn.Hour < 8)
+                {
+                    return new DateTime(ClockIn.Year, ClockIn.Month, ClockIn.Day, 8, 0, 0);
+                }
+                else if (ClockIn.Hour >= 17)
+                {
+                    //if user clocked in after 5PM on a Friday we need to move it to the next Monday at 8AM
+                    var daysToScroll = 1;
+                    if (ClockIn.DayOfWeek == DayOfWeek.Friday)
+                    {
+                        daysToScroll = 3;
+                    }
+                    var nextDay = ClockIn.AddDays(daysToScroll);
+                    return new DateTime(nextDay.Year, nextDay.Month, nextDay.Day, 8, 0, 0);
+                }
+                else
+                {
+                    return ClockIn;
+                }
+            }
+        }
+
+        public DateTime NewAdjustedClockOut
+        {
+            get
+            {
+
+                if (ClockOut.DayOfWeek == DayOfWeek.Saturday)
+                {
+                    var monday = ClockOut.AddDays(-1);
+                    return new DateTime(monday.Year, monday.Month, monday.Day, 17, 0, 0);
+                }
+                else if (ClockOut.DayOfWeek == DayOfWeek.Sunday)
+                {
+                    var monday = ClockOut.AddDays(-2);
+                    return new DateTime(monday.Year, monday.Month, monday.Day, 17, 0, 0);
+                }
+                else if (ClockOut.Hour < 8)
+                {
+                    //if user clocked out before 8AM on a monday we need to move it to Friday at 5PM
+                    var daysToScroll = -1;
+                    if(ClockOut.DayOfWeek == DayOfWeek.Monday)
+                    {
+                        daysToScroll = -3;
+                    }
+                    var previousDay = ClockOut.AddDays(daysToScroll);
+                    return new DateTime(previousDay.Year, previousDay.Month, previousDay.Day, 17, 0, 0);
+                }
+                else if (ClockOut.Hour >= 17)
+                {
+                    return new DateTime(ClockOut.Year, ClockOut.Month, ClockOut.Day, 17, 0, 0);
+                }
+                else
+                {
+                    return ClockOut;
+                }
+            }
+        }
+
+        public int WorkingDaysBetween
+        {
+            get
+            {
+                var workinDaysBetween = 0;
+                var indexDate = NewAdjustedClockIn.Date.AddDays(1);
+                while (indexDate.Date < NewAdjustedClockOut.Date)
+                {
+                    if (indexDate.DayOfWeek != DayOfWeek.Sunday && indexDate.DayOfWeek != DayOfWeek.Saturday)
+                    {
+                        workinDaysBetween++;
+                    }
+                    indexDate = indexDate.Date.AddDays(1);
+                }
+                return workinDaysBetween;
+            }
+        }
+
+
+        private void EvaluateHoursAndMinutes()
+        {
+            //If there is some error then return early
+            if(NewAdjustedClockIn > NewAdjustedClockOut)
+            {
+                return;
+            }
+            //If the times are the same exit earl with zeros
+            if(NewAdjustedClockIn == NewAdjustedClockOut)
+            {
+                return;
+            }
+            //We can simply calculate the time for this single day
+            else if (NewAdjustedClockIn.Date == NewAdjustedClockOut.Date)
+            {
+                //If the date is the same and its Sunday or Saturday we can leave early.
+                if (NewAdjustedClockIn.Date.DayOfWeek == DayOfWeek.Sunday || NewAdjustedClockIn.DayOfWeek == DayOfWeek.Saturday)
+                {
+                    return;
+                }
+
+                var timediff = NewAdjustedClockOut.Subtract(NewAdjustedClockIn);
+                this.Hours = timediff.Hours;
+                this.Minutes = timediff.Minutes;
+                return;
+            }
+
+            //Lets try to handle the case where the days are all on the weekend, this is probably not the most
+            //  effecient code but since its a sanity check I want clarity over performance
+            var indexDate = NewAdjustedClockIn.Date;
+            var weekdays = 0;
+            while (indexDate.Date != NewAdjustedClockOut.Date)
+            {
+                if (indexDate.DayOfWeek != DayOfWeek.Sunday && indexDate.DayOfWeek != DayOfWeek.Saturday)
+                {
+                    weekdays++;
+                    break;
+                }
+                indexDate = indexDate.AddDays(1);
+            }
+            if (weekdays == 0)
+            {
+                return;
+            }
+
+            //Get the time to the end of the day for the clock in event
+            var endOfDay = new DateTime(NewAdjustedClockIn.Year, NewAdjustedClockIn.Month, NewAdjustedClockIn.Day, 17, 0, 0);
+            TimeSpan differenceClockInDay = new TimeSpan();
+             differenceClockInDay = endOfDay.Subtract(NewAdjustedClockIn);
+            
+
+            //Get the time for the start of day to the clock out date
+            var startOfDate = new DateTime(NewAdjustedClockOut.Year, NewAdjustedClockOut.Month, NewAdjustedClockOut.Day, 8, 0, 0);
+            TimeSpan differenceClockOutDay = new TimeSpan();
+            differenceClockOutDay = NewAdjustedClockOut.Subtract(startOfDate);
+
+            var bothDays = differenceClockInDay + differenceClockOutDay;
+
+           
+            var totalHours = (WorkingDaysBetween * 9) + bothDays.Hours;
+            var totalMinutes = bothDays.Minutes;
+            this.Hours = totalHours;
+            this.Minutes = totalMinutes;
+        }
+
         public override string ToString()
         {
             return "Clock In: " + ClockIn.ToString() + Environment.NewLine + "Clock Out: " + ClockOut.ToString() + Environment.NewLine + "Hours:" + Hours.ToString() + " Minutes:" + Minutes.ToString();
@@ -264,14 +339,17 @@ select P1.PunchID,EmpID,
 
     class TimeSlip
     {
+      
         public DateTime ClockIn { get; set; }
         public DateTime ClockOut { get; set; }
-        public DateTime AdjClockIn { get; set; }
-        public DateTime AdjClockOut { get; set; }
         public int WorkDays { get; set; }
         public string ClockInDay { get; set; }
         public string ClockOutDay { get; set; }
         public int ValidHours { get; set; }
+       
         public int ValidMinutes { get; set; }
+
+      
+        
     }
 }
