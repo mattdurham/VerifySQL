@@ -49,7 +49,7 @@ namespace VerifySQL
             {
                 connection.Open();
                 connection.Execute("CREATE TABLE #EmployeePunches (     PunchID     INT IDENTITY(1, 1)     ,  ClockIn    DATETIME     , ClockOut   DATETIME, EmpID int default 100 ) ");
-                var start = new DateTime(2016, 01, 22, 12, 0, 0);
+                var start = new DateTime(2001, 01, 01, 12, 0, 0);
                 var maxTime = DateTime.Parse("2054-10-04 00:00:00.000");
                 while (true)
                 {
