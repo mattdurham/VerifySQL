@@ -27,10 +27,17 @@ namespace VerifySQL.Models
         public int EmployeeID{ get; private set; }
 
         public DateTime ClockIn { get; private set; }
+
         public DateTime ClockOut { get; private set; }
         
         private DateTime? _cacheClockIn;
-        public DateTime NewAdjustedClockIn
+        /// <summary>
+        /// Adjusts the clock in to the most valid date
+        /// for instance if clocked in before 8AM will adjust to 8AM
+        /// or if clocked in a weekend will move to the Monday at 8AM. 
+        /// Or if clocked in after 5PM will move to next workday at 8AM
+        /// </summary>
+        private DateTime NewAdjustedClockIn
         {
             get
             {
@@ -43,7 +50,7 @@ namespace VerifySQL.Models
         }
 
         private DateTime? _cacheClockOut;
-        public DateTime NewAdjustedClockOut
+        private DateTime NewAdjustedClockOut
         {
             get
             {
@@ -64,17 +71,21 @@ namespace VerifySQL.Models
         }
 
         
-        private bool OnlyCoversWeekend
+        private bool InToOutOnlyCoversWeekend
         {
             get
             {
-                //If clockin isnt on a weekend return early
+                //If clockin/clockout isnt on a weekend return early
                 if(ClockIn.DayOfWeek != DayOfWeek.Saturday && ClockIn.DayOfWeek != DayOfWeek.Sunday)
                 {
                     return false;
                 }
+                else if (ClockOut.DayOfWeek != DayOfWeek.Saturday && ClockOut.DayOfWeek != DayOfWeek.Sunday)
+                {
+                    return false;
+                }
                 //If same day and the day of week is saturday or sunday then don't do anything
-                if(ClockIn.Date == ClockOut.Date && (ClockIn.DayOfWeek == DayOfWeek.Saturday || ClockIn.DayOfWeek == DayOfWeek.Sunday))
+                else if(ClockIn.Date == ClockOut.Date && (ClockIn.DayOfWeek == DayOfWeek.Saturday || ClockIn.DayOfWeek == DayOfWeek.Sunday))
                 {
                     return true;
                 }
@@ -175,7 +186,7 @@ namespace VerifySQL.Models
             var hoursWorked = new HoursWorked(this);
             hoursWorked.StatusCode = StatusCode.ValidTime;
             //If the range only covers weekend then end early
-            if(OnlyCoversWeekend)
+            if(InToOutOnlyCoversWeekend)
             {
                 return hoursWorked;
             }
@@ -205,30 +216,11 @@ namespace VerifySQL.Models
                 hoursWorked.Minutes = timediff.Minutes;
                 return hoursWorked;
             }
-
-            //Lets try to handle the case where the days are all on the weekend, this is probably not the most
-            //  effecient code but since its a sanity check I want clarity over performance
-            var indexDate = NewAdjustedClockIn.Date;
-            var weekdays = 0;
-            while (indexDate.Date != NewAdjustedClockOut.Date)
-            {
-                if (indexDate.DayOfWeek != DayOfWeek.Sunday && indexDate.DayOfWeek != DayOfWeek.Saturday)
-                {
-                    weekdays++;
-                    break;
-                }
-                indexDate = indexDate.AddDays(1);
-            }
-            if (weekdays == 0)
-            {
-                return hoursWorked;
-            }
-
+            
             //Get the time to the end of the day for the clock in event
             var endOfDay = new DateTime(NewAdjustedClockIn.Year, NewAdjustedClockIn.Month, NewAdjustedClockIn.Day, 17, 0, 0);
             TimeSpan differenceClockInDay = new TimeSpan();
             differenceClockInDay = endOfDay.Subtract(NewAdjustedClockIn);
-
 
             //Get the time for the start of day to the clock out date
             var startOfDate = new DateTime(NewAdjustedClockOut.Year, NewAdjustedClockOut.Month, NewAdjustedClockOut.Day, 8, 0, 0);
@@ -236,12 +228,8 @@ namespace VerifySQL.Models
             differenceClockOutDay = NewAdjustedClockOut.Subtract(startOfDate);
 
             var bothDays = differenceClockInDay + differenceClockOutDay;
-
-
-            var totalHours = (WorkingDaysBetween * 9) + bothDays.Hours;
-            var totalMinutes = bothDays.Minutes;
-            hoursWorked.Hours = totalHours;
-            hoursWorked.Minutes = totalMinutes;
+            hoursWorked.Hours = (WorkingDaysBetween * 9) + bothDays.Hours;
+            hoursWorked.Minutes = bothDays.Minutes;
             return hoursWorked;
         }
 

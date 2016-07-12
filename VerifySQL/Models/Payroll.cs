@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace VerifySQL.Models
 {
+    /// <summary>
+    /// Identifies a batch of payroll records, includes both valid and invalid items
+    /// </summary>
     public class Payroll
     {
         public Payroll()
@@ -31,7 +34,10 @@ namespace VerifySQL.Models
         /// </summary>
         public Dictionary<int, List<HoursWorked>> AllHoursWorkedByEmployee { get; set; }
 
-
+        /// <summary>
+        /// Add a record to the the appropriate lists
+        /// </summary>
+        /// <param name="hoursWorked"></param>
         internal void AddRecord(HoursWorked hoursWorked)
         {
             //Adding all the items at once
@@ -41,6 +47,8 @@ namespace VerifySQL.Models
                 InvalidHoursWorkedByEmployee.Add(hoursWorked.ParentRecord.EmployeeID, new List<HoursWorked>());
                 ValidHoursWorkedByEmployee.Add(hoursWorked.ParentRecord.EmployeeID, new List<HoursWorked>());
             }
+
+            
             AllHoursWorkedByEmployee[hoursWorked.ParentRecord.EmployeeID].Add(hoursWorked);
 
             if(hoursWorked.IsValid)

@@ -59,7 +59,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="UnitTests.cs" />
+    <Compile Include="ModelCreationHelper.cs" />
+    <Compile Include="MultipleRecordUnitTests.cs" />
+    <Compile Include="SingleRecordUnitTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

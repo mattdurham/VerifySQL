@@ -15,9 +15,6 @@ namespace VerifySQL
 
         static void Main(string[] args)
         {
-         
-
-
             //Now Lets test some random entries
             var sb = new SqlConnectionStringBuilder();
             sb.IntegratedSecurity = true;
