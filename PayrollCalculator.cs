@@ -7,11 +7,11 @@ using VerifySQL.Models;
 
 namespace VerifySQL
 {
-    internal class HoursCalculator
+    public class PayrollCalculator
     {
-        public Payroll GetPayroll(DateTime start, DateTime end, IEnumerable<TimeDifference> payrollRecords)
+        public static Payroll Calculate( IEnumerable<TimeDifference> payrollRecords)
         {
-            var payroll = new Payroll(start, end);
+            var payroll = new Payroll();
             Parallel.ForEach(payrollRecords, record =>
             {
                 var hoursWorked = record.EvaluateHoursAndMinutes();

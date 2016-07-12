@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace VerifySQL.Models
 {
-    internal class TimeDifference
+    public class TimeDifference
     {
       
 
@@ -15,6 +15,13 @@ namespace VerifySQL.Models
             ClockIn = clockIn;
             ClockOut = clockOut;
             EmployeeID = employeeID;
+        }
+
+        public TimeDifference(TimeSlip slip)
+        {
+            ClockIn = slip.ClockIn;
+            ClockOut = slip.ClockOut;
+            EmployeeID = slip.EmployeeId;
         }
 
         public int EmployeeID{ get; private set; }
@@ -44,26 +51,56 @@ namespace VerifySQL.Models
                 {
                     _cacheClockOut = CalculateClockOut();
                 }
-                return _cacheClockIn.Value;
+                return _cacheClockOut.Value;
             }
         }
 
-        public int WorkingDaysBetween
+        private int WorkingDaysBetween
         {
             get
             {
-                var workinDaysBetween = 0;
-                var indexDate = NewAdjustedClockIn.Date.AddDays(1);
-                while (indexDate.Date < NewAdjustedClockOut.Date)
-                {
-                    if (indexDate.DayOfWeek != DayOfWeek.Sunday && indexDate.DayOfWeek != DayOfWeek.Saturday)
-                    {
-                        workinDaysBetween++;
-                    }
-                    indexDate = indexDate.Date.AddDays(1);
-                }
-                return workinDaysBetween;
+                return WorkDaysBetween(NewAdjustedClockIn, NewAdjustedClockOut);
             }
+        }
+
+        
+        private bool OnlyCoversWeekend
+        {
+            get
+            {
+                //If clockin isnt on a weekend return early
+                if(ClockIn.DayOfWeek != DayOfWeek.Saturday && ClockIn.DayOfWeek != DayOfWeek.Sunday)
+                {
+                    return false;
+                }
+                //If same day and the day of week is saturday or sunday then don't do anything
+                if(ClockIn.Date == ClockOut.Date && (ClockIn.DayOfWeek == DayOfWeek.Saturday || ClockIn.DayOfWeek == DayOfWeek.Sunday))
+                {
+                    return true;
+                }
+                //If same day and NOT Saturday or Sunday return early
+                else if(ClockIn.Date == ClockOut.Date && (ClockIn.DayOfWeek != DayOfWeek.Saturday && ClockIn.DayOfWeek != DayOfWeek.Sunday))
+                {
+                    return false;
+                }
+                
+                return WorkDaysBetween(ClockIn,ClockOut) == 0;
+            }
+        }
+
+        private int WorkDaysBetween(DateTime start, DateTime end)
+        {
+            var workinDaysBetween = 0;
+            var indexDate = start.Date.AddDays(1);
+            while (indexDate.Date < end.Date)
+            {
+                if (indexDate.DayOfWeek != DayOfWeek.Sunday && indexDate.DayOfWeek != DayOfWeek.Saturday)
+                {
+                    workinDaysBetween++;
+                }
+                indexDate = indexDate.Date.AddDays(1);
+            }
+            return workinDaysBetween;
         }
 
         private DateTime CalculateClockIn()
@@ -137,6 +174,11 @@ namespace VerifySQL.Models
         {
             var hoursWorked = new HoursWorked(this);
             hoursWorked.StatusCode = StatusCode.ValidTime;
+            //If the range only covers weekend then end early
+            if(OnlyCoversWeekend)
+            {
+                return hoursWorked;
+            }
             //If there is some error then return early
             if (NewAdjustedClockIn > NewAdjustedClockOut)
             {

@@ -6,20 +6,14 @@ using System.Threading.Tasks;
 
 namespace VerifySQL.Models
 {
-    internal class Payroll
+    public class Payroll
     {
-        public Payroll(DateTime start, DateTime end)
+        public Payroll()
         {
-            StartOfPeriod = start;
-            EndOfPeriod = end;
             ValidHoursWorkedByEmployee = new Dictionary<int, List<HoursWorked>>();
             InvalidHoursWorkedByEmployee = new Dictionary<int, List<HoursWorked>>();
             AllHoursWorkedByEmployee = new Dictionary<int, List<HoursWorked>>();
         }
-
-        public DateTime StartOfPeriod { get; set; }
-
-        public DateTime EndOfPeriod { get; set; }
 
         
         /// <summary>

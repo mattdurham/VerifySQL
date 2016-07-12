@@ -48,7 +48,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="HoursCalculator.cs" />
+    <Compile Include="PayrollCalculator.cs" />
     <Compile Include="Models\ErrorCode.cs" />
     <Compile Include="Models\HoursWorked.cs" />
     <Compile Include="Models\Payroll.cs" />

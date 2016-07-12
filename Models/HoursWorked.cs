@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace VerifySQL.Models
 {
-    internal class HoursWorked
+    public class HoursWorked
     {
 
         public HoursWorked(TimeDifference parentRecord)
@@ -20,7 +20,7 @@ namespace VerifySQL.Models
         {
             get
             {
-                return StatusCode != StatusCode.ValidTime;
+                return StatusCode == StatusCode.ValidTime;
             }
         }
         public StatusCode StatusCode { get; set; }

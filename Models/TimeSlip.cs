@@ -7,15 +7,17 @@ using System.Threading.Tasks;
 namespace VerifySQL.Models
 {
 
-    internal class TimeSlip
+    public class TimeSlip
     {
-        public int EmployeeId { get; set; }
-        public DateTime ClockIn { get; set; }
-        public DateTime ClockOut { get; set; }
-        public int WorkDays { get; set; }
-        public string ClockInDay { get; set; }
-        public string ClockOutDay { get; set; }
-        public int ValidHours { get; set; }
-        public int ValidMinutes { get; set; }
+        public TimeSlip(int employeeID, DateTime clockIn, DateTime clockOut)
+        {
+            EmployeeId = employeeID;
+            ClockIn = clockIn;
+            ClockOut = clockOut;
+        }
+
+        public int EmployeeId { get; private set; }
+        public DateTime ClockIn { get; private set; }
+        public DateTime ClockOut { get; private set; }
     }
 }
