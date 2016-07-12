@@ -10,12 +10,6 @@ namespace VerifySQL.Models
     {
       
 
-        public TimeDifference(int employeeID, DateTime clockIn, DateTime clockOut)
-        {
-            ClockIn = clockIn;
-            ClockOut = clockOut;
-            EmployeeID = employeeID;
-        }
 
         public TimeDifference(TimeSlip slip)
         {
@@ -71,6 +65,9 @@ namespace VerifySQL.Models
         }
 
         
+        /// <summary>
+        /// Return non adjusted clock in/out only covers the weekend, if it is we can return early
+        /// </summary>
         private bool InToOutOnlyCoversWeekend
         {
             get
@@ -99,6 +96,13 @@ namespace VerifySQL.Models
             }
         }
 
+        /// <summary>
+        /// Calculate the work days between two dates NOT INCLUDING THE DATES
+        /// SO Monday-Wednesday would return 1
+        /// </summary>
+        /// <param name="start">Start Date</param>
+        /// <param name="end">End Date</param>
+        /// <returns>The full days BETWEEN the two dates. Momday-Wednesday would return 1. Monday-Tues would return 0</returns>
         private int WorkDaysBetween(DateTime start, DateTime end)
         {
             var workinDaysBetween = 0;
@@ -114,6 +118,10 @@ namespace VerifySQL.Models
             return workinDaysBetween;
         }
 
+        /// <summary>
+        /// Calculate the clock in date to an adjusted clock in, this could mean changing the day or time
+        /// </summary>
+        /// <returns></returns>
         private DateTime CalculateClockIn()
         {
             //If the clock in is on a Saturday set it to Monday Morning at 8AM
@@ -148,6 +156,10 @@ namespace VerifySQL.Models
             }
         }
 
+        /// <summary>
+        /// Calculate the clock out date to an adjusted clock in, this could mean changing the day or time
+        /// </summary>
+        /// <returns></returns>
         private DateTime CalculateClockOut()
         {
             if (ClockOut.DayOfWeek == DayOfWeek.Saturday)
@@ -181,6 +193,11 @@ namespace VerifySQL.Models
             }
         }
 
+        /// <summary>
+        /// Evaluate the rules, not entirely happy with this being on the Time Difference record but it seems reasonable at the moment. It is internal so might refactor it out at 
+        /// some point.
+        /// </summary>
+        /// <returns></returns>
         internal HoursWorked EvaluateHoursAndMinutes()
         {
             var hoursWorked = new HoursWorked(this);
@@ -205,12 +222,7 @@ namespace VerifySQL.Models
             //We can simply calculate the time for this single day
             else if (NewAdjustedClockIn.Date == NewAdjustedClockOut.Date)
             {
-                //If the date is the same and its Sunday or Saturday we can leave early.
-                if (NewAdjustedClockIn.Date.DayOfWeek == DayOfWeek.Sunday || NewAdjustedClockIn.DayOfWeek == DayOfWeek.Saturday)
-                {
-                    return hoursWorked;
-                }
-
+              
                 var timediff = NewAdjustedClockOut.Subtract(NewAdjustedClockIn);
                 hoursWorked.Hours = timediff.Hours;
                 hoursWorked.Minutes = timediff.Minutes;
