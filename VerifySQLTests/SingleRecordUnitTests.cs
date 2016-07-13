@@ -110,6 +110,119 @@ namespace VerifySQLTests
             Assert.True(record.Minutes == 45);
         }
 
+
+        /// <summary>
+        /// This test should move the clock in to 8AM since it is before 7AM
+        /// </summary>
+        [Fact]
+        public void TestSameDayClockInBefore8AM()
+        {
+            var timeList = ModelCreationHelper.CreateSimpleDifferenceList(1, "10/12/2015 7:00 AM", "10/12/2015 10:00 AM");
+            var payroll = PayrollCalculator.Calculate(timeList);
+
+            //Verify the payroll list
+            Assert.True(payroll != null);
+            Assert.True(payroll.AllHoursWorkedByEmployee.Count > 0);
+            Assert.True(payroll.AllHoursWorkedByEmployee.ContainsKey(1));
+            Assert.True(payroll.AllHoursWorkedByEmployee[1].Count > 0);
+
+            //Lets verify the individual record
+            var record = payroll.AllHoursWorkedByEmployee[1].ElementAt(0);
+            Assert.True(record.IsValid);
+            Assert.True(record.Hours == 2);
+            Assert.True(record.Minutes == 0);
+        }
+
+
+        /// <summary>
+        /// This test should move the clock in to 8AM since it is before 7AM
+        /// </summary>
+        [Fact]
+        public void TestClockInAfter5PMOnFriday()
+        {
+            var timeList = ModelCreationHelper.CreateSimpleDifferenceList(1, "07/01/2016 7:00 PM", "07/04/2016 10:00 AM");
+            var payroll = PayrollCalculator.Calculate(timeList);
+
+            //Verify the payroll list
+            Assert.True(payroll != null);
+            Assert.True(payroll.AllHoursWorkedByEmployee.Count > 0);
+            Assert.True(payroll.AllHoursWorkedByEmployee.ContainsKey(1));
+            Assert.True(payroll.AllHoursWorkedByEmployee[1].Count > 0);
+
+            //Lets verify the individual record
+            var record = payroll.AllHoursWorkedByEmployee[1].ElementAt(0);
+            Assert.True(record.IsValid);
+            Assert.True(record.Hours == 2);
+            Assert.True(record.Minutes == 0);
+        }
+
+        /// <summary>
+        /// This test covers clock out on saturday and should move it to the previous friday
+        /// </summary>
+        [Fact]
+        public void TestClockOutOnSaturday()
+        {
+            var timeList = ModelCreationHelper.CreateSimpleDifferenceList(1, "07/01/2016 4:00 PM", "07/02/2016 10:00 AM");
+            var payroll = PayrollCalculator.Calculate(timeList);
+
+            //Verify the payroll list
+            Assert.True(payroll != null);
+            Assert.True(payroll.AllHoursWorkedByEmployee.Count > 0);
+            Assert.True(payroll.AllHoursWorkedByEmployee.ContainsKey(1));
+            Assert.True(payroll.AllHoursWorkedByEmployee[1].Count > 0);
+
+            //Lets verify the individual record
+            var record = payroll.AllHoursWorkedByEmployee[1].ElementAt(0);
+            Assert.True(record.IsValid);
+            Assert.True(record.Hours == 1);
+            Assert.True(record.Minutes == 0);
+        }
+
+        /// <summary>
+        ///  This test covers clock out on sunday and should move it to the previous friday
+        /// </summary>
+        [Fact]
+        public void TestClockOutOnSundayy()
+        {
+            var timeList = ModelCreationHelper.CreateSimpleDifferenceList(1, "07/01/2016 4:00 PM", "07/03/2016 10:00 AM");
+            var payroll = PayrollCalculator.Calculate(timeList);
+
+            //Verify the payroll list
+            Assert.True(payroll != null);
+            Assert.True(payroll.AllHoursWorkedByEmployee.Count > 0);
+            Assert.True(payroll.AllHoursWorkedByEmployee.ContainsKey(1));
+            Assert.True(payroll.AllHoursWorkedByEmployee[1].Count > 0);
+
+            //Lets verify the individual record
+            var record = payroll.AllHoursWorkedByEmployee[1].ElementAt(0);
+            Assert.True(record.IsValid);
+            Assert.True(record.Hours == 1);
+            Assert.True(record.Minutes == 0);
+        }
+
+        /// <summary>
+        /// Tests that if the values are both on the same day and a weekend then 0 hours/minutes
+        /// </summary>
+        [Fact]
+        public void TestClockInAndClockOutOnSameDayWeekend()
+        {
+            var timeList = ModelCreationHelper.CreateSimpleDifferenceList(1, "07/02/2016 4:00 AM", "07/02/2016 10:00 AM");
+            var payroll = PayrollCalculator.Calculate(timeList);
+
+            //Verify the payroll list
+            Assert.True(payroll != null);
+            Assert.True(payroll.AllHoursWorkedByEmployee.Count > 0);
+            Assert.True(payroll.AllHoursWorkedByEmployee.ContainsKey(1));
+            Assert.True(payroll.AllHoursWorkedByEmployee[1].Count > 0);
+
+            //Lets verify the individual record
+            var record = payroll.AllHoursWorkedByEmployee[1].ElementAt(0);
+            Assert.True(record.IsValid);
+            Assert.True(record.Hours == 0);
+            Assert.True(record.Minutes == 0);
+        }
+
+
         /// <summary>
         /// This test should test what happens when the clock out happens before 8AM, in this case
         /// it should cap the time at 5PM the previous workday

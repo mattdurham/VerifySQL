@@ -81,16 +81,7 @@ namespace VerifySQL.Models
                 {
                     return false;
                 }
-                //If same day and the day of week is saturday or sunday then don't do anything
-                else if(ClockIn.Date == ClockOut.Date && (ClockIn.DayOfWeek == DayOfWeek.Saturday || ClockIn.DayOfWeek == DayOfWeek.Sunday))
-                {
-                    return true;
-                }
-                //If same day and NOT Saturday or Sunday return early
-                else if(ClockIn.Date == ClockOut.Date && (ClockIn.DayOfWeek != DayOfWeek.Saturday && ClockIn.DayOfWeek != DayOfWeek.Sunday))
-                {
-                    return false;
-                }
+             
                 
                 return WorkDaysBetween(ClockIn,ClockOut) == 0;
             }
