@@ -9,6 +9,6 @@ namespace VerifySQL.Models
     /// <summary>
     /// Identifies the status of the Hoursworked Record
     /// </summary>
-    public enum StatusCode { ValidTime = 0, ClockInAndClockOutSame = 1, ClockInAfterClockOut = 2};
+    public enum StatusCode { ValidTime = 0, ClockInAndClockOutSame = 1, ClockInAfterClockOut = 2, OverlappingRecord = 3};
     
 }

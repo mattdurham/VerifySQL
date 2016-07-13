@@ -69,5 +69,144 @@ namespace VerifySQLTests
             Assert.True(payroll.InvalidHoursWorkedByEmployee[1].Count == 1);
         }
 
+
+        /// <summary>
+        /// Test Overlap with two records
+        /// </summary>
+        [Fact]
+        public void TestSimpleOverlap()
+        {
+            var emp1Clock1 = ModelCreationHelper.CreateTimeDifference(1, "07/11/2016 8:00AM", "07/11/2016 5:00PM");
+            var emp1Clock2 = ModelCreationHelper.CreateTimeDifference(1, "07/11/2016 9:00AM", "07/11/2016 4:00PM");
+            var timeList = new List<TimeDifference>() { emp1Clock1, emp1Clock2 };
+
+            var payroll = PayrollCalculator.Calculate(timeList);
+
+            //Should be zero valid records
+            Assert.True(payroll.ValidHoursWorkedByEmployee[1].Count == 0);
+            //Should be two invalid records
+            Assert.True(payroll.InvalidHoursWorkedByEmployee[1].Count == 2);
+            //Should be one overlap record
+            Assert.True(payroll.OverlappingRecordsByEmployeeID[1].Count == 2);
+
+            foreach(var record in payroll.InvalidHoursWorkedByEmployee[1])
+            {
+                Assert.True(record.StatusCode == StatusCode.OverlappingRecord);
+            }
+
+        }
+
+
+        /// <summary>
+        /// Test That an overlap does NOT occur when there is an invalid record
+        /// </summary>
+        [Fact]
+        public void TestForNonOverlapWhenInvalidOverlap()
+        {
+            var emp1Clock1 = ModelCreationHelper.CreateTimeDifference(1, "07/11/2016 8:00AM", "07/11/2016 5:00PM");
+            var emp1Clock2 = ModelCreationHelper.CreateTimeDifference(1, "07/11/2016 4:00PM", "07/11/2016 9:00AM");
+            var timeList = new List<TimeDifference>() { emp1Clock1, emp1Clock2 };
+
+            var payroll = PayrollCalculator.Calculate(timeList);
+
+            //Should be zero valid records
+            Assert.True(payroll.ValidHoursWorkedByEmployee[1].Count == 1);
+            //Should be two invalid records
+            Assert.True(payroll.InvalidHoursWorkedByEmployee[1].Count == 1);
+            //Should be one overlap record
+            Assert.True(payroll.OverlappingRecordsByEmployeeID[1].Count == 0);
+
+        }
+
+
+        /// <summary>
+        /// Test That an overlap does NOT occur when there is an invalid record
+        /// </summary>
+        [Fact]
+        public void TestForNonOverlapWhenSameTimeOverlap()
+        {
+            var emp1Clock1 = ModelCreationHelper.CreateTimeDifference(1, "07/11/2016 8:00AM", "07/11/2016 5:00PM");
+            var emp1Clock2 = ModelCreationHelper.CreateTimeDifference(1, "07/11/2016 9:00AM", "07/11/2016 9:00AM");
+            var timeList = new List<TimeDifference>() { emp1Clock1, emp1Clock2 };
+
+            var payroll = PayrollCalculator.Calculate(timeList);
+
+            //Should be zero valid records
+            Assert.True(payroll.ValidHoursWorkedByEmployee[1].Count == 1);
+            //Should be two invalid records
+            Assert.True(payroll.InvalidHoursWorkedByEmployee[1].Count == 1);
+            //Should be one overlap record
+            Assert.True(payroll.OverlappingRecordsByEmployeeID[1].Count == 0);
+
+        }
+
+        /// <summary>
+        /// Test Overlap with two sets of overlap records
+        /// </summary>
+        [Fact]
+        public void TestTwoSetOverlap()
+        {
+            var emp1Clock1 = ModelCreationHelper.CreateTimeDifference(1, "07/11/2016 8:00AM", "07/11/2016 5:00PM");
+            var emp1Clock2 = ModelCreationHelper.CreateTimeDifference(1, "07/11/2016 9:00AM", "07/11/2016 4:00PM");
+
+            var emp1Clock3 = ModelCreationHelper.CreateTimeDifference(1, "07/12/2016 8:00AM", "07/12/2016 5:00PM");
+            var emp1Clock4 = ModelCreationHelper.CreateTimeDifference(1, "07/12/2016 9:00AM", "07/12/2016 4:00PM");
+
+            var timeList = new List<TimeDifference>() { emp1Clock1, emp1Clock2 , emp1Clock3, emp1Clock4};
+
+            var payroll = PayrollCalculator.Calculate(timeList);
+
+            //Should be zero valid records
+            Assert.True(payroll.ValidHoursWorkedByEmployee[1].Count == 0);
+            //Should be two invalid records
+            Assert.True(payroll.InvalidHoursWorkedByEmployee[1].Count == 4);
+            //Should be one overlap record
+            Assert.True(payroll.OverlappingRecordsByEmployeeID[1].Count == 4);
+
+            foreach (var record in payroll.InvalidHoursWorkedByEmployee[1])
+            {
+                Assert.True(record.StatusCode == StatusCode.OverlappingRecord);
+            }
+
+            Assert.True(payroll.OverlappingRecordsByEmployeeID[1].Count == 4);
+            
+
+        }
+
+
+        /// <summary>
+        /// Test Overlap with two sets of overlap records with a shared overlap
+        /// </summary>
+        [Fact]
+        public void TestTwoSetsWithSharedOverlap()
+        {
+            var emp1Clock1 = ModelCreationHelper.CreateTimeDifference(1, "07/11/2016 8:00AM", "07/11/2016 5:00PM");
+            var emp1Clock2 = ModelCreationHelper.CreateTimeDifference(1, "07/11/2016 9:00AM", "07/11/2016 4:00PM");
+
+            var emp1Clock3 = ModelCreationHelper.CreateTimeDifference(1, "07/12/2016 8:00AM", "07/12/2016 5:00PM");
+            var emp1Clock4 = ModelCreationHelper.CreateTimeDifference(1, "07/12/2016 9:00AM", "07/12/2016 4:00PM");
+
+            var sharedClock = ModelCreationHelper.CreateTimeDifference(1, "07/11/2016 4:00PM", "07/12/2016 10:00AM");
+
+            var timeList = new List<TimeDifference>() { emp1Clock1, emp1Clock2, emp1Clock3, emp1Clock4, sharedClock };
+
+            var payroll = PayrollCalculator.Calculate(timeList);
+
+            //Should be zero valid records
+            Assert.True(payroll.ValidHoursWorkedByEmployee[1].Count == 0);
+            //Should be two invalid records
+            Assert.True(payroll.InvalidHoursWorkedByEmployee[1].Count == 5);
+            //Should be one overlap record
+            Assert.True(payroll.OverlappingRecordsByEmployeeID[1].Count == 5);
+
+            foreach (var record in payroll.InvalidHoursWorkedByEmployee[1])
+            {
+                Assert.True(record.StatusCode == StatusCode.OverlappingRecord);
+            }
+
+            
+
+        }
+
     }
 }

@@ -44,6 +44,11 @@ namespace VerifySQL.Models
         }
 
         private DateTime? _cacheClockOut;
+        /// <summary>
+        /// Adjusts the standard clock out to the most valid date. 
+        /// for instance if the clock out date is after 5PM adjusts to 5PM
+        /// if on a weekend will move to the previous Friday.
+        /// </summary>
         private DateTime NewAdjustedClockOut
         {
             get
@@ -56,6 +61,9 @@ namespace VerifySQL.Models
             }
         }
 
+        /// <summary>
+        /// get the working days between adjusted clock in, ignores the current start/end. So M-Tuesday would be 0 but Monday-Wednesday would be 1
+        /// </summary>
         private int WorkingDaysBetween
         {
             get

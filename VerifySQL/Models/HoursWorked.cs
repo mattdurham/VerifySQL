@@ -29,6 +29,9 @@ namespace VerifySQL.Models
         /// </summary>
         public int Minutes { get; set; }
 
+        /// <summary>
+        /// If the status code is ValidTime then return true
+        /// </summary>
         public bool IsValid
         {
             get
